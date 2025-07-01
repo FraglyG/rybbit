@@ -1,41 +1,101 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 
-WORKDIR /app
-
-COPY shared ./shared
+# Build shared package
+FROM base AS shared-builder
 WORKDIR /app/shared
+COPY shared/ ./
 RUN npm install && npm run build
 
+# Build server
+FROM base AS server-builder
+WORKDIR /app
+COPY --from=shared-builder /app/shared ./shared
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci
-
 COPY server/ .
+RUN npm run build
+
+# Build client
+FROM base AS client-builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY --from=shared-builder /app/shared ./shared
+WORKDIR /app/client
+COPY client/package.json client/package-lock.json* ./
+RUN npm ci --legacy-peer-deps
+COPY client/ .
+
+# Next.js build args and env vars
+ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_BACKEND_URL
+ARG NEXT_PUBLIC_DISABLE_SIGNUP
+ARG NEXT_PUBLIC_CLOUD
+ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+ENV NEXT_PUBLIC_DISABLE_SIGNUP=${NEXT_PUBLIC_DISABLE_SIGNUP}
+ENV NEXT_PUBLIC_CLOUD=${NEXT_PUBLIC_CLOUD}
 
 RUN npm run build
 
-FROM node:20-alpine
+# Runtime image
+FROM base AS runtime
 
 WORKDIR /app
 
+# Install PostgreSQL client for server mode
 RUN apk add --no-cache postgresql-client
 
-COPY --from=builder /app/server/package*.json ./
-COPY --from=builder /app/server/GeoLite2-City.mmdb ./GeoLite2-City.mmdb
-COPY --from=builder /app/server/dist ./dist
-COPY --from=builder /app/server/node_modules ./node_modules
-COPY --from=builder /app/server/docker-entrypoint.sh /docker-entrypoint.sh
-COPY --from=builder /app/server/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/server/public ./public
-COPY --from=builder /app/shared ./shared
-COPY --from=builder /app/server/src ./src
+# Copy server files
+COPY --from=server-builder /app/server/package*.json ./server/
+COPY --from=server-builder /app/server/GeoLite2-City.mmdb ./server/GeoLite2-City.mmdb
+COPY --from=server-builder /app/server/dist ./server/dist
+COPY --from=server-builder /app/server/node_modules ./server/node_modules
+COPY --from=server-builder /app/server/docker-entrypoint.sh /docker-entrypoint.sh
+COPY --from=server-builder /app/server/drizzle.config.ts ./server/drizzle.config.ts
+COPY --from=server-builder /app/server/public ./server/public
+COPY --from=server-builder /app/server/src ./server/src
+COPY --from=shared-builder /app/shared ./shared
 
+# Copy client files
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+COPY --from=client-builder /app/client/public ./client/public
+RUN mkdir -p ./client/.next && chown nextjs:nodejs ./client/.next
+COPY --from=client-builder --chown=nextjs:nodejs /app/client/.next/standalone ./client/
+COPY --from=client-builder --chown=nextjs:nodejs /app/client/.next/static ./client/.next/static
 
+# Make the entrypoint executable
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 3001
+# Expose both ports
+EXPOSE 3001 3002
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["node", "dist/index.js"]
+# Create a startup script that handles MODE switching
+RUN cat > /start.sh << 'EOF'
+#!/bin/sh
+if [ "$MODE" = "client" ]; then
+    echo "Starting in CLIENT mode..."
+    cd /app/client
+    export NODE_ENV=production
+    export NEXT_TELEMETRY_DISABLED=1
+    export PORT=3002
+    export HOSTNAME="0.0.0.0"
+    exec su-exec nextjs node server.js
+elif [ "$MODE" = "server" ]; then
+    echo "Starting in SERVER mode..."
+    cd /app/server
+    exec /docker-entrypoint.sh node dist/index.js
+else
+    echo "ERROR: MODE environment variable must be set to either 'client' or 'server'"
+    exit 1
+fi
+EOF
+
+RUN chmod +x /start.sh
+
+# Install su-exec for user switching
+RUN apk add --no-cache su-exec
+
+ENTRYPOINT ["/start.sh"]

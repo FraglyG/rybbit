@@ -32,7 +32,7 @@ RUN apk add --no-cache postgresql-client
 COPY server/package*.json ./
 COPY server/GeoLite2-City.mmdb ./GeoLite2-City.mmdb
 COPY server/dist ./dist
-COPY server/node_modules ./node_modules
+COPY --from=builder /app/server/node_modules ./node_modules
 COPY server/docker-entrypoint.sh /docker-entrypoint.sh
 COPY server/drizzle.config.ts ./drizzle.config.ts
 COPY server/public ./public

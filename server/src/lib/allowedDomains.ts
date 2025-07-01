@@ -30,12 +30,20 @@ export const loadAllowedDomains = async () => {
     allowList = [
       "localhost",
       normalizeOrigin(process.env.BASE_URL || ""),
+      ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(',').map(origin => normalizeOrigin(origin.trim())) : []),
       ...domains.map(({ domain }) => normalizeOrigin(domain)),
     ];
+    
+    // Initialize auth with the allowed origins
+    initAuth(allowList);
   } catch (error) {
     console.error("Error loading allowed domains:", error);
     // Set default values in case of error
-    allowList = ["localhost", normalizeOrigin(process.env.BASE_URL || "")];
+    allowList = [
+      "localhost", 
+      normalizeOrigin(process.env.BASE_URL || ""),
+      ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(',').map(origin => normalizeOrigin(origin.trim())) : []),
+    ];
     initAuth(allowList);
   }
 };

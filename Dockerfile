@@ -72,28 +72,11 @@ RUN chmod +x /docker-entrypoint.sh
 # Expose both ports
 EXPOSE 3001 3002
 
-# Create a startup script that handles MODE switching
-RUN echo '#!/bin/sh\n\
-if [ "$MODE" = "client" ]; then\n\
-    echo "Starting in CLIENT mode..."\n\
-    cd /app/client\n\
-    export NODE_ENV=production\n\
-    export NEXT_TELEMETRY_DISABLED=1\n\
-    export PORT=3002\n\
-    export HOSTNAME="0.0.0.0"\n\
-    exec su-exec nextjs node server.js\n\
-elif [ "$MODE" = "server" ]; then\n\
-    echo "Starting in SERVER mode..."\n\
-    cd /app/server\n\
-    exec /docker-entrypoint.sh node dist/index.js\n\
-else\n\
-    echo "ERROR: MODE environment variable must be set to either '\''client'\'' or '\''server'\''"\n\
-    exit 1\n\
-fi' > /start.sh
-
-RUN chmod +x /start.sh
-
 # Install su-exec for user switching
 RUN apk add --no-cache su-exec
+
+# Copy the startup script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 ENTRYPOINT ["/start.sh"]

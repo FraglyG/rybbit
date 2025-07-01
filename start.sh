@@ -1,26 +1,18 @@
-#!/bin/bash
+#!/bin/sh
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
-
-echo "Starting services..."
-
-# Check if .env file exists
-if [ ! -f .env ]; then
-  echo "Error: .env file not found. Please run setup.sh first."
-  echo "Usage: ./setup.sh <domain_name>"
-  exit 1
-fi
-
-# Load environment variables
-source .env
-
-if [ "$USE_WEBSERVER" = "false" ]; then
-  # Start without the caddy service when using --no-webserver
-  docker compose start backend client clickhouse postgres
+if [ "$MODE" = "client" ]; then
+    echo "Starting in CLIENT mode..."
+    cd /app/client
+    export NODE_ENV=production
+    export NEXT_TELEMETRY_DISABLED=1
+    export PORT=3002
+    export HOSTNAME="0.0.0.0"
+    exec su-exec nextjs node server.js
+elif [ "$MODE" = "server" ]; then
+    echo "Starting in SERVER mode..."
+    cd /app/server
+    exec /docker-entrypoint.sh node dist/index.js
 else
-  # Start all services including caddy
-  docker compose start
+    echo "ERROR: MODE environment variable must be set to either 'client' or 'server'"
+    exit 1
 fi
-
-echo "Services started. You can monitor logs with: docker compose logs -f" 

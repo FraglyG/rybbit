@@ -73,25 +73,23 @@ RUN chmod +x /docker-entrypoint.sh
 EXPOSE 3001 3002
 
 # Create a startup script that handles MODE switching
-RUN cat > /start.sh << 'EOF'
-#!/bin/sh
-if [ "$MODE" = "client" ]; then
-    echo "Starting in CLIENT mode..."
-    cd /app/client
-    export NODE_ENV=production
-    export NEXT_TELEMETRY_DISABLED=1
-    export PORT=3002
-    export HOSTNAME="0.0.0.0"
-    exec su-exec nextjs node server.js
-elif [ "$MODE" = "server" ]; then
-    echo "Starting in SERVER mode..."
-    cd /app/server
-    exec /docker-entrypoint.sh node dist/index.js
-else
-    echo "ERROR: MODE environment variable must be set to either 'client' or 'server'"
-    exit 1
-fi
-EOF
+RUN echo '#!/bin/sh\n\
+if [ "$MODE" = "client" ]; then\n\
+    echo "Starting in CLIENT mode..."\n\
+    cd /app/client\n\
+    export NODE_ENV=production\n\
+    export NEXT_TELEMETRY_DISABLED=1\n\
+    export PORT=3002\n\
+    export HOSTNAME="0.0.0.0"\n\
+    exec su-exec nextjs node server.js\n\
+elif [ "$MODE" = "server" ]; then\n\
+    echo "Starting in SERVER mode..."\n\
+    cd /app/server\n\
+    exec /docker-entrypoint.sh node dist/index.js\n\
+else\n\
+    echo "ERROR: MODE environment variable must be set to either '\''client'\'' or '\''server'\''"\n\
+    exit 1\n\
+fi' > /start.sh
 
 RUN chmod +x /start.sh
 

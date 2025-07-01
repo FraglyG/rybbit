@@ -5,8 +5,6 @@ if [ "$MODE" = "client" ]; then
     cd /app/client
     export NODE_ENV=production
     export NEXT_TELEMETRY_DISABLED=1
-    export PORT=3002
-    export HOSTNAME="0.0.0.0"
     exec su-exec nextjs node server.js
 elif [ "$MODE" = "server" ]; then
     echo "Starting in SERVER mode..."

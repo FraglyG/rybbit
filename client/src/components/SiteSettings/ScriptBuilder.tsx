@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
-import { IS_CLOUD } from "../../lib/const";
+import { IS_CLOUD, BACKEND_URL } from "../../lib/const";
 
 interface ScriptBuilderProps {
   siteId: number;
@@ -92,7 +92,7 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
 
   // Generate tracking script dynamically based on options
   const trackingScript = `<script
-    src="${globalThis.location.origin}/api/script.js"
+    src="${BACKEND_URL.replace('/api', '')}/api/script.js"
     data-site-id="${siteId}"${
     debounceValue !== 500
       ? `

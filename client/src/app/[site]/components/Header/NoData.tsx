@@ -2,6 +2,7 @@ import { useGetSite, useSiteHasData } from "../../../../api/admin/sites";
 import { CodeSnippet } from "../../../../components/CodeSnippet";
 import { Alert } from "../../../../components/ui/alert";
 import { useStore } from "../../../../lib/store";
+import { BACKEND_URL } from "../../../../lib/const";
 
 export function NoData() {
   const { site } = useStore();
@@ -27,7 +28,7 @@ export function NoData() {
           </div>
           <CodeSnippet
             language="HTML"
-            code={`<script\n    src="${globalThis.location.origin}/api/script.js"\n    data-site-id="${siteMetadata?.siteId}"\n    defer\n></script>`}
+            code={`<script\n    src="${BACKEND_URL.replace('/api', '')}/api/script.js"\n    data-site-id="${siteMetadata?.siteId}"\n    defer\n></script>`}
             className="text-xs"
           />
           <span className="text-xs text-muted-foreground">

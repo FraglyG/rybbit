@@ -28,7 +28,7 @@ import { CodeSnippet } from "../../components/CodeSnippet";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { useConfigs } from "../../lib/configs";
-import { IS_CLOUD } from "../../lib/const";
+import { IS_CLOUD, BACKEND_URL } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
 import { cn, normalizeDomain } from "../../lib/utils";
 
@@ -416,7 +416,7 @@ export default function SignupPage() {
                 <div className="border border-neutral-700 rounded-lg overflow-hidden">
                   <CodeSnippet
                     language="HTML"
-                    code={`<script\n    src="${globalThis.location.origin}/api/script.js"\n    data-site-id="${siteId}"\n    defer\n></script>`}
+                    code={`<script\n    src="${BACKEND_URL.replace('/api', '')}/api/script.js"\n    data-site-id="${siteId}"\n    defer\n></script>`}
                   />
                 </div>
               </div>
